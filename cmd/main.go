@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	screenWidth  = 320
-	screenHeight = 120
-	Scale        = 4
+	screenWidth  = 720
+	screenHeight = 360
+	Scale        = 2
 )
 
 func main() {

@@ -15,12 +15,12 @@ import (
 type DirectionCd int
 
 const (
-	FPSX         = 205 //1085
+	FPSX         = 605 //1085
 	DoV          = 200
 	D4           = 0.069813170079773
 	D360         = 6.283185307179586
 	WallHeight   = 40 //128
-	PlayerHeight = 20 //64
+	cameraHeight = 20 //64
 )
 
 const (
@@ -50,16 +50,16 @@ type Section struct {
 	walls []Wall
 }
 
-type Entity struct {
-	x    float64 // lateral
-	y    float64 // depth
-	l    float64 // Looking
-	z    float64 // height
-	a    float64 // Angle
-	sin1 float64
-	cos1 float64
-	sin2 float64
-	cos2 float64
+type Camera struct {
+	x     float64 // lateral
+	y     float64 // depth
+	l     float64 // Looking
+	z     float64 // height
+	a     float64 // Angle
+	sin3D float64
+	cos3D float64
+	sin2  float64
+	cos2  float64
 }
 
 type Fov struct {
@@ -73,7 +73,7 @@ type Fov struct {
 type Controller struct {
 	graphics.BaseHandler
 	graphics.CoreMethods
-	player   *Entity
+	camera   *Camera
 	sections []Section
 	fov      *Fov
 }
@@ -87,24 +87,29 @@ func NewController(width, height uint32) *Controller {
 			CH: float64(height / 2),
 			S:  DoV,
 		},
-		player: &Entity{
-			x:    70,
-			y:    -110,
-			z:    20,
-			a:    0,
-			l:    0,
-			sin1: math.Sin(0),
-			cos1: math.Cos(0),
-			sin2: math.Sin(0),
-			cos2: math.Cos(0),
+		camera: &Camera{
+			x:     160,
+			y:     160,
+			z:     20,
+			a:     0,
+			l:     0,
+			sin3D: math.Sin(0),
+			cos3D: math.Cos(0),
+			sin2:  math.Sin(0),
+			cos2:  math.Cos(0),
 		},
 		sections: []Section{
 			{
 				walls: []Wall{
-					{x: [2]float64{40, 40}, y: [2]float64{10, 290}, z: [2]float64{0, 40}, c: [3]uint32{0xFF0000FF, 0x00FF00FF, 0x000000FFFF}},
-					//{x: [2]float64{350, 450}, y: [2]float64{150, 150}, z: [2]float64{0, 40}, c: [3]uint32{0x00FF00FF, 0x00FF00FF, 0x000000FFFF}},
-					//{x: [2]float64{450, 450}, y: [2]float64{150, 250}, z: [2]float64{0, 40}, c: [3]uint32{0x0000FFFF, 0x00FF00FF, 0x000000FFFF}},
-					//{x: [2]float64{450, 350}, y: [2]float64{250, 250}, z: [2]float64{0, 40}, c: [3]uint32{0xFFFF00FF, 0x00FF00FF, 0x000000FFFF}},
+					{x: [2]float64{-25, -25}, y: [2]float64{25, -75}, z: [2]float64{0, 40}, c: [3]uint32{0xFF0000FF, 0x00FF00FF, 0x000000FFFF}},
+					{x: [2]float64{-25, 25}, y: [2]float64{-75, -75}, z: [2]float64{0, 40}, c: [3]uint32{0x00FF00FF, 0x00FF00FF, 0x000000FFFF}},
+					{x: [2]float64{25, 25}, y: [2]float64{-75, 25}, z: [2]float64{0, 40}, c: [3]uint32{0x0000FFFF, 0x00FF00FF, 0x000000FFFF}},
+					{x: [2]float64{25, -25}, y: [2]float64{25, 25}, z: [2]float64{0, 40}, c: [3]uint32{0xFFFF00FF, 0x00FF00FF, 0x000000FFFF}},
+
+					{x: [2]float64{175, 175}, y: [2]float64{125, 75}, z: [2]float64{0, 40}, c: [3]uint32{0xFF0000FF, 0x00FF00FF, 0x000000FFFF}},
+					{x: [2]float64{175, 225}, y: [2]float64{75, 75}, z: [2]float64{0, 40}, c: [3]uint32{0x00FF00FF, 0x00FF00FF, 0x000000FFFF}},
+					{x: [2]float64{225, 225}, y: [2]float64{75, 125}, z: [2]float64{0, 40}, c: [3]uint32{0x0000FFFF, 0x00FF00FF, 0x000000FFFF}},
+					{x: [2]float64{225, 175}, y: [2]float64{125, 125}, z: [2]float64{0, 40}, c: [3]uint32{0xFFFF00FF, 0x00FF00FF, 0x000000FFFF}},
 				},
 			},
 		},
@@ -131,106 +136,101 @@ func (c *Controller) OnDraw(renderer *sdl.Renderer) {
 }
 
 func (c *Controller) draw2D(renderer *sdl.Renderer) {
-	//offset := float64(c.fov.W)
+	offset := float64(c.fov.W)
 	renderer.SetDrawColor(uint8(0), uint8(0), uint8(0xFF), uint8(0xFF))
 	renderer.DrawLine(int32(c.fov.W), 0, int32(c.fov.W), int32(c.fov.H))
-	//
-	//renderer.SetDrawColor(uint8(0xFF), uint8(0), uint8(0), uint8(0xFF))
-	//renderer.DrawPointF(float32(c.player.x+offset), float32(-c.player.y))
-	//
-	//for _, section := range c.sections {
-	//	for _, w := range section.walls {
-	//		renderer.SetDrawColor(uint8(w.c[0]>>24), uint8(w.c[0]>>16), uint8(w.c[0]>>8), uint8(w.c[0]))
-	//		renderer.DrawLineF(float32(w.x[0]+offset), float32(w.y[0]), float32(w.x[1]+offset), float32(w.y[1]))
-	//	}
-	//}
+
+	renderer.SetDrawColor(uint8(0xFF), uint8(0xFF), uint8(0xFF), uint8(0xFF))
+	renderer.DrawLinesF([]sdl.FPoint{
+		c.rotate(c.camera.x+offset, c.camera.y, c.camera.x+offset, c.camera.y),
+		c.rotate(c.camera.x-5+offset, c.camera.y+20, c.camera.x+offset, c.camera.y),
+		c.rotate(c.camera.x+5+offset, c.camera.y+20, c.camera.x+offset, c.camera.y),
+		c.rotate(c.camera.x+offset, c.camera.y, c.camera.x+offset, c.camera.y),
+	})
+	renderer.SetDrawColor(uint8(0xFF), uint8(0), uint8(0), uint8(0xFF))
+	renderer.DrawPointF(float32(c.camera.x+offset), float32(c.camera.y))
+
+	for _, section := range c.sections {
+		for _, w := range section.walls {
+			renderer.SetDrawColor(uint8(w.c[0]>>24), uint8(w.c[0]>>16), uint8(w.c[0]>>8), uint8(w.c[0]))
+			renderer.DrawLineF(float32(w.x[0]+offset), float32(w.y[0]), float32(w.x[1]+offset), float32(w.y[1]))
+		}
+	}
 }
 
 func (c *Controller) rotate(x, y, ox, oy float64) sdl.FPoint {
 	return sdl.FPoint{
-		X: float32((x-ox)*c.player.cos2 - (y-oy)*c.player.sin2 + ox),
-		Y: float32((y-oy)*c.player.cos2 + (x-ox)*c.player.sin2 + oy),
+		X: float32((x-ox)*c.camera.cos2 - (y-oy)*c.camera.sin2 + ox),
+		Y: float32((y-oy)*c.camera.cos2 + (x-ox)*c.camera.sin2 + oy),
 	}
 
 }
 
-func (c *Controller) translate(r *sdl.Renderer, x, y, z float64, e *Entity) (float32, float32) {
-	// offset coordinates by entity
-	dx := x - e.x
-	dy := y - e.y
-	dz := z / (e.z * 2)
+func (c *Controller) translate(r *sdl.Renderer, x, y, z float64, cam *Camera) (float32, float32) {
+	// Center the point around zero
+	dx := x - cam.x
+	dy := y - cam.y
+	dz := z - cam.z + (cam.z * c.camera.l / 10)
 
-	// rotate around entity
-	rdx := dx*e.cos1 - dy*e.sin1
-	rdy := dy*e.cos1 + dx*e.sin1
+	// Rotate
+	rdx := dx*cam.cos3D - dy*cam.sin3D
+	rdy := dy*cam.cos3D + dx*cam.sin3D
 
-	scale := 3 - dz
-
-	// Convert to screen position
-	rdx = rdx*scale + c.fov.CW
-	rdy = rdy*scale + c.fov.CH
+	// Convert to 2D
+	rdx = rdx*-100/rdy + c.fov.CW
+	rdy = dz*100/rdy + c.fov.CH + (c.fov.CH * c.camera.l / 100)
 
 	return float32(rdx), float32(rdy)
 }
 
-//	func (c *Controller) drawWall(renderer sdl.Renderer, x1, x2, b1, b2 float64) {
-//		var x, y float64
-//		dyb := b2 - b1
-//		dx := x2 - x1
-//		if dx == 0 {
-//			dx = 1
-//		}
-//		xs := x1
-//		for x = x1; x < x2; x++ {
-//			y1 := dyb*(x-xs+.05)/dx + b1
-//		}
-//	}
-func (c *Controller) draw3D(renderer *sdl.Renderer) {
-	var wx, wy, wz [4]float64
-
-	x1 := 40 - c.player.x
-	y1 := 10 - c.player.y
-	x2 := 40 - c.player.x
-	y2 := 290 - c.player.y
-
-	wx[0] = x1*c.player.cos1 + y1*c.player.sin1
-	wx[1] = x2*c.player.cos1 + y2*c.player.sin1
-
-	wy[0] = y1*c.player.cos1 - x1*c.player.sin1
-	wy[1] = y2*c.player.cos1 - x2*c.player.sin1
-
-	wz[0] = 0 - c.player.z + ((c.player.l * wy[0]) / 32)
-	wz[1] = 0 - c.player.z + ((c.player.l * wy[1]) / 32)
-
-	wx[0] = wx[0]*200/wy[0] + c.fov.CW
-	wx[1] = wx[1]*200/wy[1] + c.fov.CW
-	wy[0] = wz[0]*200/wy[0] + c.fov.CH
-	wy[1] = wz[1]*200/wy[1] + c.fov.CH
-
-	renderer.SetDrawColor(255, 255, 255, 255)
-	if wx[0] > 0 && wx[0] < c.fov.W && wy[0] > 0 && wy[0] < c.fov.H {
-		renderer.DrawPointF(float32(wx[0]), float32(wy[0]))
-	}
-	if wx[1] > 0 && wx[1] < c.fov.W && wy[1] > 0 && wy[1] < c.fov.H {
-		renderer.DrawPointF(float32(wx[1]), float32(wy[1]))
-	}
+func mark(r *sdl.Renderer, x, y float64) {
+	r.SetDrawColor(255, 255, 255, 255)
+	r.DrawLineF(float32(x-2), float32(y-2), float32(x+2), float32(y+2))
+	r.DrawLineF(float32(x+2), float32(y-2), float32(x-2), float32(y+2))
 }
-
-func (c *Controller) Xdraw3D(renderer *sdl.Renderer) {
+func (c *Controller) draw3D(renderer *sdl.Renderer) {
+	mark(renderer, c.fov.CW, c.fov.CH)
 	var wx, wy [4]float32
+	wv := make([]sdl.Vertex, 6)
 	for _, section := range c.sections {
 		for _, w := range section.walls {
-			wx[0], wy[0] = c.translate(renderer, w.x[0], w.y[0], w.z[0], c.player)
-			wx[1], wy[1] = c.translate(renderer, w.x[1], w.y[1], w.z[0], c.player)
-			wx[2], wy[2] = c.translate(renderer, w.x[0], w.y[0], w.z[1], c.player)
-			wx[3], wy[3] = c.translate(renderer, w.x[1], w.y[1], w.z[1], c.player)
+			wx[0], wy[0] = c.translate(renderer, w.x[0], w.y[0], w.z[0], c.camera)
+			wx[1], wy[1] = c.translate(renderer, w.x[1], w.y[1], w.z[0], c.camera)
+			wx[2], wy[2] = c.translate(renderer, w.x[0], w.y[0], w.z[1], c.camera)
+			wx[3], wy[3] = c.translate(renderer, w.x[1], w.y[1], w.z[1], c.camera)
 
 			renderer.SetDrawColor(uint8(w.c[0]>>24), uint8(w.c[0]>>16), uint8(w.c[0]>>8), uint8(w.c[0]))
-			renderer.DrawLineF(wx[0], wy[0], wx[1], wy[1])
-			renderer.DrawLineF(wx[2], wy[2], wx[3], wy[3])
-
-			renderer.DrawLineF(wx[0], wy[0], wx[2], wy[2])
-			renderer.DrawLineF(wx[1], wy[1], wx[3], wy[3])
+			wv[0] = sdl.Vertex{
+				Position: sdl.FPoint{X: wx[0], Y: wy[0]},
+				Color:    sdl.Color{R: uint8(w.c[0] >> 24), G: uint8(w.c[0] >> 16), B: uint8(w.c[0] >> 8), A: uint8(w.c[0])},
+				TexCoord: sdl.FPoint{},
+			}
+			wv[1] = sdl.Vertex{
+				Position: sdl.FPoint{X: wx[1], Y: wy[1]},
+				Color:    sdl.Color{R: uint8(w.c[0] >> 24), G: uint8(w.c[0] >> 16), B: uint8(w.c[0] >> 8), A: uint8(w.c[0])},
+				TexCoord: sdl.FPoint{},
+			}
+			wv[2] = sdl.Vertex{
+				Position: sdl.FPoint{X: wx[2], Y: wy[2]},
+				Color:    sdl.Color{R: uint8(w.c[0] >> 24), G: uint8(w.c[0] >> 16), B: uint8(w.c[0] >> 8), A: uint8(w.c[0])},
+				TexCoord: sdl.FPoint{},
+			}
+			wv[3] = sdl.Vertex{
+				Position: sdl.FPoint{X: wx[3], Y: wy[3]},
+				Color:    sdl.Color{R: uint8(w.c[0] >> 24), G: uint8(w.c[0] >> 16), B: uint8(w.c[0] >> 8), A: uint8(w.c[0])},
+				TexCoord: sdl.FPoint{},
+			}
+			wv[4] = sdl.Vertex{
+				Position: sdl.FPoint{X: wx[1], Y: wy[1]},
+				Color:    sdl.Color{R: uint8(w.c[0] >> 24), G: uint8(w.c[0] >> 16), B: uint8(w.c[0] >> 8), A: uint8(w.c[0])},
+				TexCoord: sdl.FPoint{},
+			}
+			wv[5] = sdl.Vertex{
+				Position: sdl.FPoint{X: wx[2], Y: wy[2]},
+				Color:    sdl.Color{R: uint8(w.c[0] >> 24), G: uint8(w.c[0] >> 16), B: uint8(w.c[0] >> 8), A: uint8(w.c[0])},
+				TexCoord: sdl.FPoint{},
+			}
+			renderer.RenderGeometry(nil, wv, nil)
 		}
 	}
 }
@@ -270,58 +270,58 @@ func (c *Controller) processKeys() {
 }
 
 func (c *Controller) move(dir DirectionCd) {
-	dx := 8 * c.player.sin2
-	dy := 8 * c.player.cos2
+	dx := 8 * c.camera.sin2
+	dy := 8 * c.camera.cos2
 	switch dir {
 	case DirectionCdForward:
-		c.player.x += dx
-		c.player.y += dy
+		c.camera.x += dx
+		c.camera.y -= dy
 	case DirectionCdBackward:
-		c.player.x -= dx
-		c.player.y -= dy
+		c.camera.x -= dx
+		c.camera.y += dy
 	case DirectionCdStrafeLeft:
-		c.player.x += dy
-		c.player.y += dx
+		c.camera.x -= dy
+		c.camera.y -= dx
 	case DirectionCdStrafeRight:
-		c.player.x -= dy
-		c.player.y -= dx
+		c.camera.x += dy
+		c.camera.y += dx
 	case DirectionCdMoveUp:
-		c.player.z += 4
-		if c.player.z > WallHeight {
-			c.player.z = WallHeight
+		c.camera.z += 4
+		if c.camera.z > c.fov.H {
+			c.camera.z = c.fov.H
 		}
 	case DirectionCdMoveDown:
-		c.player.z -= 4
-		if c.player.z > 0 {
-			c.player.z = 0
+		c.camera.z -= 4
+		if c.camera.z < -c.fov.H {
+			c.camera.z = c.fov.H
 		}
 	case DirectionCdLookUp:
-		c.player.l -= 1
-		if c.player.l < -WallHeight {
-			c.player.l = -WallHeight
+		c.camera.l += 1
+		if c.camera.l > cameraHeight {
+			c.camera.l = cameraHeight
 		}
 	case DirectionCdLookDown:
-		c.player.l += 1
-		if c.player.l > WallHeight {
-			c.player.l = WallHeight
+		c.camera.l -= 1
+		if c.camera.l < -cameraHeight {
+			c.camera.l = -cameraHeight
 		}
 	case DirectionCdAntiClockwise:
-		c.player.a -= D4
-		if c.player.a < 0 {
-			c.player.a += D360
+		c.camera.a -= D4
+		if c.camera.a < 0 {
+			c.camera.a += D360
 		}
-		c.player.sin1 = math.Sin(-c.player.a)
-		c.player.cos1 = math.Cos(-c.player.a)
-		c.player.sin2 = math.Sin(c.player.a)
-		c.player.cos2 = math.Cos(c.player.a)
+		c.camera.sin3D = math.Sin(-c.camera.a)
+		c.camera.cos3D = math.Cos(-c.camera.a)
+		c.camera.sin2 = math.Sin(c.camera.a)
+		c.camera.cos2 = math.Cos(c.camera.a)
 	case DirectionCdClockwise:
-		c.player.a += D4
-		if c.player.a > D360 {
-			c.player.a -= D360
+		c.camera.a += D4
+		if c.camera.a > D360 {
+			c.camera.a -= D360
 		}
-		c.player.sin1 = math.Sin(-c.player.a)
-		c.player.cos1 = math.Cos(-c.player.a)
-		c.player.sin2 = math.Sin(c.player.a)
-		c.player.cos2 = math.Cos(c.player.a)
+		c.camera.sin3D = math.Sin(-c.camera.a)
+		c.camera.cos3D = math.Cos(-c.camera.a)
+		c.camera.sin2 = math.Sin(c.camera.a)
+		c.camera.cos2 = math.Cos(c.camera.a)
 	}
 }
