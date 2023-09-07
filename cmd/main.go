@@ -14,10 +14,11 @@ import (
 
 const (
 	screenWidth  = 320
-	screenHeight = 160
+	screenHeight = 120
+	Scale        = 4
 )
 
 func main() {
-	graphics.Open("Text Renderer", screenWidth*4, screenHeight*4, controller.NewController())
+	graphics.Open("Text Renderer", screenWidth*Scale, screenHeight*Scale, controller.NewController(screenWidth/2, screenHeight))
 	fmt.Println("Game over")
 }

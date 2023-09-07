@@ -16,9 +16,7 @@ type DirectionCd int
 
 const (
 	FPSX         = 205 //1085
-	Width        = 160 //600
-	Height       = 160 //600
-	FOV          = 200
+	DoV          = 200
 	D4           = 0.069813170079773
 	D360         = 6.283185307179586
 	WallHeight   = 40 //128
@@ -65,8 +63,8 @@ type Entity struct {
 }
 
 type Fov struct {
-	W  uint32
-	H  uint32
+	W  float64
+	H  float64
 	CW float64
 	CH float64
 	S  float64
@@ -80,14 +78,14 @@ type Controller struct {
 	fov      *Fov
 }
 
-func NewController() *Controller {
+func NewController(width, height uint32) *Controller {
 	c := &Controller{
 		fov: &Fov{
-			W:  Width,
-			H:  Height,
-			CW: Width / 2,
-			CH: Height / 2,
-			S:  FOV,
+			W:  float64(width),
+			H:  float64(height),
+			CW: float64(width / 2),
+			CH: float64(height / 2),
+			S:  DoV,
 		},
 		player: &Entity{
 			x:    70,
@@ -103,7 +101,7 @@ func NewController() *Controller {
 		sections: []Section{
 			{
 				walls: []Wall{
-					{x: [2]float64{350, 350}, y: [2]float64{250, 150}, z: [2]float64{0, 40}, c: [3]uint32{0xFF0000FF, 0x00FF00FF, 0x000000FFFF}},
+					{x: [2]float64{40, 40}, y: [2]float64{10, 290}, z: [2]float64{0, 40}, c: [3]uint32{0xFF0000FF, 0x00FF00FF, 0x000000FFFF}},
 					//{x: [2]float64{350, 450}, y: [2]float64{150, 150}, z: [2]float64{0, 40}, c: [3]uint32{0x00FF00FF, 0x00FF00FF, 0x000000FFFF}},
 					//{x: [2]float64{450, 450}, y: [2]float64{150, 250}, z: [2]float64{0, 40}, c: [3]uint32{0x0000FFFF, 0x00FF00FF, 0x000000FFFF}},
 					//{x: [2]float64{450, 350}, y: [2]float64{250, 250}, z: [2]float64{0, 40}, c: [3]uint32{0xFFFF00FF, 0x00FF00FF, 0x000000FFFF}},
@@ -117,7 +115,7 @@ func NewController() *Controller {
 func (c *Controller) Init(canvas *graphics.Canvas) {
 	fonts.LoadFonts(canvas.Renderer())
 	graphics.ErrorTrap(canvas.Renderer().SetDrawBlendMode(sdl.BLENDMODE_BLEND))
-	canvas.Renderer().SetLogicalSize(Width*2, Height)
+	canvas.Renderer().SetLogicalSize(int32(c.fov.W*2), int32(c.fov.H))
 	c.AddDestroyer(fonts.FreeFonts)
 }
 
@@ -133,26 +131,19 @@ func (c *Controller) OnDraw(renderer *sdl.Renderer) {
 }
 
 func (c *Controller) draw2D(renderer *sdl.Renderer) {
-	offset := float64(c.fov.W)
+	//offset := float64(c.fov.W)
 	renderer.SetDrawColor(uint8(0), uint8(0), uint8(0xFF), uint8(0xFF))
 	renderer.DrawLine(int32(c.fov.W), 0, int32(c.fov.W), int32(c.fov.H))
-
-	renderer.SetDrawColor(uint8(0xFF), uint8(0xFF), uint8(0xFF), uint8(0xFF))
-	renderer.DrawLinesF([]sdl.FPoint{
-		c.rotate(c.player.x+offset, c.player.y, c.player.x+offset, c.player.y),
-		c.rotate(c.player.x-5+offset, c.player.y+20, c.player.x+offset, c.player.y),
-		c.rotate(c.player.x+5+offset, c.player.y+20, c.player.x+offset, c.player.y),
-		c.rotate(c.player.x+offset, c.player.y, c.player.x+offset, c.player.y),
-	})
-	renderer.SetDrawColor(uint8(0xFF), uint8(0), uint8(0), uint8(0xFF))
-	renderer.DrawPointF(float32(c.player.x+offset), float32(c.player.y))
-
-	for _, section := range c.sections {
-		for _, w := range section.walls {
-			renderer.SetDrawColor(uint8(w.c[0]>>24), uint8(w.c[0]>>16), uint8(w.c[0]>>8), uint8(w.c[0]))
-			renderer.DrawLineF(float32(w.x[0]+offset), float32(w.y[0]), float32(w.x[1]+offset), float32(w.y[1]))
-		}
-	}
+	//
+	//renderer.SetDrawColor(uint8(0xFF), uint8(0), uint8(0), uint8(0xFF))
+	//renderer.DrawPointF(float32(c.player.x+offset), float32(-c.player.y))
+	//
+	//for _, section := range c.sections {
+	//	for _, w := range section.walls {
+	//		renderer.SetDrawColor(uint8(w.c[0]>>24), uint8(w.c[0]>>16), uint8(w.c[0]>>8), uint8(w.c[0]))
+	//		renderer.DrawLineF(float32(w.x[0]+offset), float32(w.y[0]), float32(w.x[1]+offset), float32(w.y[1]))
+	//	}
+	//}
 }
 
 func (c *Controller) rotate(x, y, ox, oy float64) sdl.FPoint {
@@ -182,22 +173,34 @@ func (c *Controller) translate(r *sdl.Renderer, x, y, z float64, e *Entity) (flo
 	return float32(rdx), float32(rdy)
 }
 
+//	func (c *Controller) drawWall(renderer sdl.Renderer, x1, x2, b1, b2 float64) {
+//		var x, y float64
+//		dyb := b2 - b1
+//		dx := x2 - x1
+//		if dx == 0 {
+//			dx = 1
+//		}
+//		xs := x1
+//		for x = x1; x < x2; x++ {
+//			y1 := dyb*(x-xs+.05)/dx + b1
+//		}
+//	}
 func (c *Controller) draw3D(renderer *sdl.Renderer) {
 	var wx, wy, wz [4]float64
 
 	x1 := 40 - c.player.x
-	y1 := c.player.y - 10
+	y1 := 10 - c.player.y
 	x2 := 40 - c.player.x
-	y2 := c.player.y - 290
+	y2 := 290 - c.player.y
 
-	wx[0] = x1*c.player.cos1 - y1*c.player.sin1
-	wx[1] = x2*c.player.cos1 - y2*c.player.sin1
+	wx[0] = x1*c.player.cos1 + y1*c.player.sin1
+	wx[1] = x2*c.player.cos1 + y2*c.player.sin1
 
-	wy[0] = y1*c.player.cos1 + x1*c.player.sin1
-	wy[1] = y2*c.player.cos1 + x2*c.player.sin1
+	wy[0] = y1*c.player.cos1 - x1*c.player.sin1
+	wy[1] = y2*c.player.cos1 - x2*c.player.sin1
 
-	wz[0] = 0 - c.player.z
-	wz[1] = 0 - c.player.z
+	wz[0] = 0 - c.player.z + ((c.player.l * wy[0]) / 32)
+	wz[1] = 0 - c.player.z + ((c.player.l * wy[1]) / 32)
 
 	wx[0] = wx[0]*200/wy[0] + c.fov.CW
 	wx[1] = wx[1]*200/wy[1] + c.fov.CW
@@ -205,8 +208,12 @@ func (c *Controller) draw3D(renderer *sdl.Renderer) {
 	wy[1] = wz[1]*200/wy[1] + c.fov.CH
 
 	renderer.SetDrawColor(255, 255, 255, 255)
-	renderer.DrawPointF(float32(wx[0]), float32(wy[0]))
-	renderer.DrawPointF(float32(wx[1]), float32(wy[1]))
+	if wx[0] > 0 && wx[0] < c.fov.W && wy[0] > 0 && wy[0] < c.fov.H {
+		renderer.DrawPointF(float32(wx[0]), float32(wy[0]))
+	}
+	if wx[1] > 0 && wx[1] < c.fov.W && wy[1] > 0 && wy[1] < c.fov.H {
+		renderer.DrawPointF(float32(wx[1]), float32(wy[1]))
+	}
 }
 
 func (c *Controller) Xdraw3D(renderer *sdl.Renderer) {
@@ -268,16 +275,16 @@ func (c *Controller) move(dir DirectionCd) {
 	switch dir {
 	case DirectionCdForward:
 		c.player.x += dx
-		c.player.y -= dy
+		c.player.y += dy
 	case DirectionCdBackward:
 		c.player.x -= dx
-		c.player.y += dy
+		c.player.y -= dy
 	case DirectionCdStrafeLeft:
-		c.player.x -= dy
-		c.player.y -= dx
-	case DirectionCdStrafeRight:
 		c.player.x += dy
 		c.player.y += dx
+	case DirectionCdStrafeRight:
+		c.player.x -= dy
+		c.player.y -= dx
 	case DirectionCdMoveUp:
 		c.player.z += 4
 		if c.player.z > WallHeight {
@@ -289,14 +296,14 @@ func (c *Controller) move(dir DirectionCd) {
 			c.player.z = 0
 		}
 	case DirectionCdLookUp:
-		c.player.l += 1
-		if c.player.l > PlayerHeight {
-			c.player.l = PlayerHeight
+		c.player.l -= 1
+		if c.player.l < -WallHeight {
+			c.player.l = -WallHeight
 		}
 	case DirectionCdLookDown:
-		c.player.l -= 1
-		if c.player.l < 0 {
-			c.player.l = 0
+		c.player.l += 1
+		if c.player.l > WallHeight {
+			c.player.l = WallHeight
 		}
 	case DirectionCdAntiClockwise:
 		c.player.a -= D4
